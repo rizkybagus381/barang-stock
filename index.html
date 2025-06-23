@@ -1,34 +1,822 @@
-<!DOCTYPE HTML>
-<!-- Copyright 2014 The Flutter Authors. All rights reserved.
-Use of this source code is governed by a BSD-style license that can be
-found in the LICENSE file. -->
-<html>
+<!DOCTYPE html>
+<html lang="id">
 <head>
-  <title>Flutter Test Browser Host</title>
-  <style>
-    /* Configure so that the test application takes up the whole screen */
-    body {
-      margin: 0;
-      padding: 0;
-      position: fixed;
-      top: 0px;
-      left: 0px;
-      overflow: hidden;
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Barcode Produk</title>
+    <!-- Memuat Tailwind CSS untuk styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Memuat pustaka ZXing-JS untuk deteksi barcode kamera -->
+    <script type="text/javascript" src="https://unpkg.com/@zxing/library@latest"></script>
+    <style>
+        /* Gaya kustom untuk font dan warna latar belakang */
+        body {
+            font-family: 'Inter', sans-serif; /* Font modern yang menyerupai SF Pro */
+            background-color: #1a202c; /* Latar belakang body sangat gelap (dark gray) */
+            color: #e2e8f0; /* Teks default terang */
+        }
+        /* Gaya untuk tabel */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #4a5568; /* Garis bawah abu-abu lebih gelap */
+        }
+        th {
+            background-color: #2d3748; /* Warna abu-abu gelap untuk header tabel */
+            color: #cbd5e0; /* Teks terang */
+            font-weight: 600; /* Sedikit lebih tebal */
+        }
+        tr:hover {
+            background-color: #2c3546; /* Warna abu-abu sedikit lebih gelap saat di-hover */
+        }
+        /* Responsif untuk tabel di layar kecil */
+        @media (max-width: 768px) {
+            table, thead, tbody, th, td, tr {
+                display: block;
+            }
+            thead tr {
+                position: absolute;
+                top: -9999px;
+                left: -9999px;
+            }
+            tr {
+                border: 1px solid #4a5568;
+                margin-bottom: 15px;
+                border-radius: 12px; /* Sudut membulat yang lebih besar */
+                overflow: hidden;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.2); /* Bayangan halus untuk dark mode */
+                background-color: #2d3748; /* Background untuk baris di mobile */
+            }
+            td {
+                border: none;
+                border-bottom: 1px solid #4a5568;
+                position: relative;
+                padding-left: 50%;
+                text-align: right;
+            }
+            td:before {
+                position: absolute;
+                top: 0;
+                left: 6px;
+                width: 45%;
+                padding-right: 10px;
+                white-space: nowrap;
+                text-align: left;
+                font-weight: bold;
+                color: #a0aec0; /* Warna label yang sedikit berbeda */
+            }
+            /* Label untuk setiap kolom di mode mobile */
+            td:nth-of-type(1):before { content: "Barcode:"; }
+            td:nth-of-type(2):before { content: "Nama Produk:"; }
+            td:nth-of-type(3):before { content: "Kategori:"; }
+            td:nth-of-type(4):before { content: "Harga Satuan:"; }
+            td:nth-of-type(5):before { content: "Jumlah:"; }
+            td:nth-of-type(6):before { content: "Total Harga:"; }
+            td:nth-of-type(7):before { content: "Aksi:"; }
+        }
 
-    iframe {
-      border: none;
-      width: 2400px;
-      height: 1800px;
-      position: fixed;
-      top: 0px;
-      left: 0px;
-      overflow: hidden;
-    }
-  </style>
+        /* Gaya untuk area kamera */
+        #mainCameraContainer { /* Hanya main camera container yang tersisa */
+            position: relative;
+            width: 100%;
+            max-width: 400px;
+            margin: 0 auto;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            background-color: #000;
+        }
+        #mainCameraVideo { /* Hanya main camera video yang tersisa */
+            width: 100%;
+            height: auto;
+            display: block;
+            object-fit: cover;
+            /* TRANSFORM INI DIHAPUS UNTUK MENGHINDARI MIRROR PADA KAMERA BELAKANG */
+            /* transform: scaleX(-1); */ 
+        }
+        #mainCameraCanvas { /* Hanya main camera canvas yang tersisa */
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+        }
+        .scanner-frame {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 80%;
+            height: 30%;
+            transform: translate(-50%, -50%);
+            border: 2px solid #a855f7;
+            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
+            pointer-events: none;
+            z-index: 5;
+            border-radius: 12px;
+        }
+        .scanner-line {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(to right, transparent, #a855f7, transparent);
+            animation: scan 2s infinite linear;
+            z-index: 6;
+        }
+
+        /* Gaya untuk modal konfirmasi hapus */
+        #deleteConfirmationModal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        #deleteConfirmationModal.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        #deleteConfirmationContent {
+            background-color: #2d3748;
+            color: #e2e8f0;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+            transform: translateY(-20px);
+            transition: transform 0.3s ease;
+        }
+        #deleteConfirmationModal.show #deleteConfirmationContent {
+            transform: translateY(0);
+        }
+
+        /* Input field focus style */
+        input {
+            background-color: #2d3748;
+            color: #e2e8f0;
+            border-color: #4a5568;
+        }
+        input::placeholder {
+            color: #a0aec0;
+        }
+        input:focus {
+            outline: none;
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.4);
+            background-color: #2d3748;
+        }
+
+        /* Select box styles */
+        select {
+            background-color: #2d3748;
+            color: #e2e8f0;
+            border-color: #4a5568;
+        }
+        select:focus {
+            outline: none;
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.4);
+        }
+    </style>
 </head>
-<body>
-  <div id="dark"></div>
-  <script src="host.dart.js"></script>
+<body class="bg-gray-900 p-4 sm:p-8 flex items-center justify-center min-h-screen">
+
+    <!-- Konten Aplikasi Utama (Sekarang Selalu Terlihat) -->
+    <div id="mainAppContent" class="bg-gray-800 p-6 rounded-2xl shadow-xl w-full max-w-4xl border border-gray-700">
+        <h1 class="text-3xl font-bold text-white mb-6 text-center">Sistem Data Barcode Produk Jadi</h1>
+
+        <!-- Area User ID -->
+        <div class="mb-6 p-4 bg-blue-900 rounded-xl border border-blue-800 shadow-sm text-center">
+            <p class="text-white text-sm">User ID: <span id="userIdDisplay" class="font-mono text-blue-300 break-all">Memuat...</span></p>
+        </div>
+
+        <!-- Area Deteksi Kamera Barcode -->
+        <div class="mb-8 p-6 bg-gray-700 rounded-xl border border-gray-600 shadow-sm">
+            <h2 class="text-xl font-semibold text-gray-200 mb-4 text-center">Pindai Barcode dengan Kamera</h2>
+            <div id="mainCameraContainer" class="relative mb-4 hidden">
+                <video id="mainCameraVideo" class="rounded-lg"></video>
+                <canvas id="mainCameraCanvas" class="hidden"></canvas>
+                <div class="scanner-frame">
+                    <div class="scanner-line"></div>
+                </div>
+            </div>
+            <div id="mainCameraMessage" class="text-gray-300 mb-4 text-center"></div>
+            <select id="mainCameraSelect" class="p-3 border border-gray-600 rounded-lg mb-3 w-full max-w-xs mx-auto block"></select>
+            <div class="flex flex-col sm:flex-row justify-center gap-3">
+                <button id="startMainCameraButton"
+                        class="bg-purple-700 hover:bg-purple-800 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105">
+                    Mulai Pindai Kamera Barcode
+                </button>
+                <button id="stopMainCameraButton"
+                        class="bg-red-700 hover:bg-red-800 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105 hidden">
+                    Berhenti Pindai Barcode
+                </button>
+            </div>
+        </div>
+
+        <!-- Formulir Input Barcode dan Produk -->
+        <div class="mb-8 p-6 bg-gray-700 rounded-xl border border-gray-600 shadow-sm">
+            <h2 class="text-xl font-semibold text-gray-200 mb-4 text-center">Input/Perbarui Detail Produk</h2>
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
+                <div>
+                    <label for="barcodeInput" class="block text-sm font-medium text-gray-300 mb-1">Barcode Produk:</label>
+                    <input type="text" id="barcodeInput" placeholder="Pindai atau masukkan barcode"
+                           class="w-full p-3 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-200 shadow-sm">
+                </div>
+                <div>
+                    <label for="productNameInput" class="block text-sm font-medium text-gray-300 mb-1">Nama Produk:</label>
+                    <input type="text" id="productNameInput" placeholder="Masukkan nama produk"
+                           class="w-full p-3 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-200 shadow-sm">
+                </div>
+                <div>
+                    <label for="productCategoryInput" class="block text-sm font-medium text-gray-300 mb-1">Kategori Produk:</label>
+                    <input type="text" id="productCategoryInput" placeholder="Contoh: Makanan, Minuman"
+                           class="w-full p-3 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-200 shadow-sm">
+                </div>
+                <div>
+                    <label for="productUnitPriceInput" class="block text-sm font-medium text-gray-300 mb-1">Harga Satuan (Rp):</label>
+                    <input type="number" id="productUnitPriceInput" placeholder="Masukkan harga satuan"
+                           class="w-full p-3 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-200 shadow-sm">
+                </div>
+                <div>
+                    <label for="productQuantityInput" class="block text-sm font-medium text-gray-300 mb-1">Jumlah Awal/Manual:</label>
+                    <input type="number" id="productQuantityInput" placeholder="Contoh: 30" value="1" min="0"
+                           class="w-full p-3 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-200 shadow-sm">
+                </div>
+            </div>
+            <div class="flex flex-col sm:flex-row gap-3">
+                <button id="saveProductButton"
+                        class="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105">
+                    Tambah/Perbarui Produk
+                </button>
+                <button id="clearInputButton"
+                        class="w-full sm:w-auto bg-gray-500 hover:bg-gray-600 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105">
+                    Bersihkan Input
+                </button>
+            </div>
+            <p id="messageArea" class="mt-4 text-center font-medium"></p>
+        </div>
+
+        <!-- Area Total Barang dan Harga -->
+        <div class="mb-8 p-6 bg-green-700 rounded-xl border border-green-600 shadow-sm text-center">
+            <h2 class="text-xl font-semibold text-white mb-4">Ringkasan Barang</h2>
+            <div class="flex justify-around items-center text-lg font-bold text-white">
+                <p>Total Barang: <span id="totalItemsDisplay" class="text-green-300">0</span></p>
+                <p>Total Harga: <span id="totalPriceDisplay" class="text-green-300">Rp 0</span></p>
+            </div>
+        </div>
+
+        <!-- Tabel Daftar Produk -->
+        <div class="p-6 bg-gray-700 rounded-xl border border-gray-600 overflow-x-auto shadow-sm">
+            <h2 class="text-xl font-semibold text-gray-200 mb-4 text-center">Daftar Produk</h2>
+            <table id="productTable" class="min-w-full divide-y divide-gray-600 rounded-lg overflow-hidden">
+                <thead class="bg-gray-600 text-gray-200">
+                    <tr>
+                        <th class="py-3 px-6 text-left text-sm font-medium uppercase tracking-wider rounded-tl-lg">Barcode</th>
+                        <th class="py-3 px-6 text-left text-sm font-medium uppercase tracking-wider">Nama Produk</th>
+                        <th class="py-3 px-6 text-left text-sm font-medium uppercase tracking-wider">Kategori</th>
+                        <th class="py-3 px-6 text-left text-sm font-medium uppercase tracking-wider">Harga Satuan</th>
+                        <th class="py-3 px-6 text-left text-sm font-medium uppercase tracking-wider">Jumlah</th>
+                        <th class="py-3 px-6 text-left text-sm font-medium uppercase tracking-wider">Total Harga</th>
+                        <th class="py-3 px-6 text-left text-sm font-medium uppercase tracking-wider rounded-tr-lg">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody id="productTableBody" class="bg-gray-700 divide-y divide-gray-600">
+                    <!-- Produk akan ditambahkan di sini melalui JavaScript -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Modal Konfirmasi Hapus -->
+    <div id="deleteConfirmationModal" class="hidden">
+        <div id="deleteConfirmationContent" class="p-8 bg-gray-700 rounded-2xl shadow-2xl">
+            <h3 class="text-xl font-bold text-white mb-4">Konfirmasi Hapus Produk</h3>
+            <p id="deleteProductMessage" class="text-gray-200 mb-6">Anda yakin ingin menghapus produk ini?</p>
+            <div class="flex justify-center gap-4">
+                <button id="confirmDeleteButton"
+                        class="bg-red-700 hover:bg-red-800 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105">
+                    Ya, Hapus
+                </button>
+                <button id="cancelDeleteButton"
+                        class="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105">
+                    Batal
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // Import the functions you need from the SDKs you need
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, deleteDoc, collection, onSnapshot, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Firebase Configuration (provided by user)
+        const firebaseConfig = {
+            apiKey: "AIzaSyD-JgJAv0ZBPzEGW3cSmvVWTfY4Sy12B_g",
+            authDomain: "hitungan-stok-barcode.firebaseapp.com",
+            projectId: "hitungan-stok-barcode", // Corrected based on authDomain (from original user input)
+            storageBucket: "hitungan-stok-barcode.firebasestorage.app",
+            messagingSenderId: "880501835759",
+            appId: "1:880501835759:web:6f25176906215cc36e581a",
+            measurementId: "G-1TBDBV22HM"
+        };
+        // Use global variables for app_id and firebase_config if available
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const runtimeFirebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : firebaseConfig;
+
+        // Initialize Firebase
+        const app = initializeApp(runtimeFirebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        let userId = null; // User ID will be set after authentication
+        let productsCollectionRef = null; // Reference to the Firestore collection
+        let unsubscribeFromFirestore = null; // Function to unsubscribe from Firestore listener
+
+        // Array to store unique product definitions along with their quantities.
+        // This array will be kept in sync with Firestore.
+        let products = [];
+        // Variable to temporarily store the barcode of the product to be deleted
+        let productToDeleteBarcode = null; 
+        
+        // Get references to HTML elements by their IDs (same as before)
+        const barcodeInput = document.getElementById('barcodeInput');
+        const productNameInput = document.getElementById('productNameInput');
+        const productCategoryInput = document.getElementById('productCategoryInput');
+        const productUnitPriceInput = document.getElementById('productUnitPriceInput');
+        const productQuantityInput = document.getElementById('productQuantityInput');
+        const saveProductButton = document.getElementById('saveProductButton');
+        const clearInputButton = document.getElementById('clearInputButton');
+        const productTableBody = document.getElementById('productTableBody');
+        const messageArea = document.getElementById('messageArea');
+
+        const totalItemsDisplay = document.getElementById('totalItemsDisplay');
+        const totalPriceDisplay = document.getElementById('totalPriceDisplay');
+        const userIdDisplay = document.getElementById('userIdDisplay'); // To display user ID
+
+        // Elements for Main App Camera (barcode scanner)
+        const mainCameraVideo = document.getElementById('mainCameraVideo');
+        const mainCameraCanvas = document.getElementById('mainCameraCanvas');
+        const mainCameraContainer = document.getElementById('mainCameraContainer');
+        const mainCameraMessage = document.getElementById('mainCameraMessage');
+        const mainCameraSelect = document.getElementById('mainCameraSelect');
+        const startMainCameraButton = document.getElementById('startMainCameraButton');
+        const stopMainCameraButton = document.getElementById('stopMainCameraButton');
+
+        const deleteConfirmationModal = document.getElementById('deleteConfirmationModal');
+        const deleteProductMessage = document.getElementById('deleteProductMessage');
+        const confirmDeleteButton = document.getElementById('confirmDeleteButton');
+        const cancelDeleteButton = document.getElementById('cancelDeleteButton');
+
+        let codeReader; // ZXing CodeReader object for barcode scanner
+
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        const audioContext = AudioContext ? new AudioContext() : null;
+
+        // --- Core Functions (playBeep, showMessage, etc.) ---
+
+        function playBeep() {
+            if (!audioContext) { console.warn('Web Audio API not supported.'); return; }
+            if (audioContext.state === 'suspended') { audioContext.resume(); }
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            oscillator.type = 'sine';
+            oscillator.frequency.value = 2000;
+            gainNode.gain.setValueAtTime(1.0, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + 0.08); 
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.08);
+        }
+
+        function showMessage(msg, type = 'info') {
+            messageArea.textContent = msg;
+            if (type === 'success') {
+                messageArea.className = 'mt-4 text-center font-medium text-green-400';
+            } else if (type === 'error') {
+                messageArea.className = 'mt-4 text-center font-medium text-red-400';
+            } else {
+                messageArea.className = 'mt-4 text-center font-medium text-gray-300';
+            }
+        }
+
+        function showCameraMessage(msg, type = 'info') {
+            const targetMessageArea = mainCameraMessage;
+            targetMessageArea.textContent = msg;
+            if (type === 'error') {
+                targetMessageArea.className = 'text-red-400 mb-4';
+            } else {
+                targetMessageArea.className = 'text-gray-300 mb-4';
+            }
+        }
+
+        function clearInputs() {
+            barcodeInput.value = '';
+            productNameInput.value = '';
+            productCategoryInput.value = '';
+            productUnitPriceInput.value = '';
+            productQuantityInput.value = 1;
+            showMessage('');
+            barcodeInput.focus();
+        }
+
+        function renderProductTable() {
+            console.log("[DEBUG] renderProductTable: Rendering table. Current products:", products);
+            productTableBody.innerHTML = '';
+
+            if (products.length === 0) {
+                const row = productTableBody.insertRow();
+                const cell = row.insertCell();
+                cell.colSpan = 7;
+                cell.className = 'py-4 text-center text-gray-400 italic';
+                cell.textContent = 'Belum ada produk yang ditambahkan.';
+                updateTotals();
+                return;
+            }
+
+            const sortedProducts = [...products].sort((a, b) => a.barcode.localeCompare(b.barcode));
+
+            sortedProducts.forEach(product => {
+                const row = productTableBody.insertRow();
+                row.className = 'hover:bg-gray-600 transition duration-150 ease-in-out';
+
+                const barcodeCell = row.insertCell();
+                barcodeCell.textContent = product.barcode;
+                barcodeCell.className = 'py-3 px-6 text-sm text-gray-200';
+
+                const nameCell = row.insertCell();
+                nameCell.textContent = product.name;
+                nameCell.className = 'py-3 px-6 text-sm text-gray-200';
+
+                const categoryCell = row.insertCell();
+                categoryCell.textContent = product.category;
+                categoryCell.className = 'py-3 px-6 text-sm text-gray-200';
+
+                const unitPriceCell = row.insertCell();
+                unitPriceCell.textContent = 'Rp ' + product.unitPrice.toLocaleString('id-ID');
+                unitPriceCell.className = 'py-3 px-6 text-sm text-gray-200';
+
+                const quantityCell = row.insertCell();
+                quantityCell.textContent = product.quantity;
+                quantityCell.className = 'py-3 px-6 text-sm text-gray-200';
+
+                const totalPriceItemCell = row.insertCell();
+                totalPriceItemCell.textContent = 'Rp ' + (product.unitPrice * product.quantity).toLocaleString('id-ID');
+                totalPriceItemCell.className = 'py-3 px-6 text-sm text-gray-200';
+
+                const actionCell = row.insertCell();
+                const deleteButton = document.createElement('button');
+                deleteButton.textContent = 'Hapus';
+                deleteButton.className = 'bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg text-xs shadow-md transition duration-300 ease-in-out transform hover:scale-105';
+                deleteButton.onclick = () => showDeleteConfirmation(product.barcode, product.name);
+                actionCell.appendChild(deleteButton);
+                actionCell.className = 'py-3 px-6 text-sm text-gray-200';
+            });
+            updateTotals();
+        }
+
+        async function handleBarcodeScan(barcodeValue) {
+            playBeep();
+            const barcode = barcodeValue.trim();
+            console.log("[DEBUG] handleBarcodeScan: Processing barcode:", barcode);
+
+            if (!barcode || !productsCollectionRef) {
+                showMessage('Sistem belum siap atau barcode kosong.', 'error');
+                return;
+            }
+
+            try {
+                const existingProduct = products.find(p => p.barcode === barcode);
+                console.log("[DEBUG] handleBarcodeScan: Existing product found locally:", existingProduct);
+
+                if (existingProduct) {
+                    const newQuantity = existingProduct.quantity + 1;
+                    const productDocRef = doc(productsCollectionRef, barcode);
+                    await setDoc(productDocRef, { quantity: newQuantity }, { merge: true }); // Merge to only update quantity
+                    showMessage(`Kuantitas "${existingProduct.name}" (Barcode: ${barcode}) ditingkatkan menjadi ${newQuantity}.`, 'success');
+                    fillFormWithProductDetails({ ...existingProduct, quantity: newQuantity }); // Optimistic UI update
+                } else {
+                    barcodeInput.value = barcode;
+                    productNameInput.value = '';
+                    productCategoryInput.value = '';
+                    productUnitPriceInput.value = '';
+                    productQuantityInput.value = 1; // Default to 1 for new products
+                    showMessage(`Barcode "${barcode}" terdeteksi. Harap lengkapi detail produk baru dan klik 'Tambah/Perbarui Produk'.`, 'info');
+                }
+            } catch (e) {
+                console.error("Error handling barcode scan:", e);
+                showMessage(`Gagal memproses barcode: ${e.message}`, 'error');
+            } finally {
+                barcodeInput.focus();
+            }
+        }
+
+        function fillFormWithProductDetails(product) {
+            console.log("[DEBUG] fillFormWithProductDetails: Filling form with product:", product);
+            if (product) {
+                barcodeInput.value = product.barcode;
+                productNameInput.value = product.name;
+                productCategoryInput.value = product.category;
+                productUnitPriceInput.value = product.unitPrice;
+                productQuantityInput.value = product.quantity;
+            } else {
+                clearInputs();
+            }
+        }
+
+        async function processFormSubmission() {
+            const barcode = barcodeInput.value.trim();
+            const name = productNameInput.value.trim();
+            const category = productCategoryInput.value.trim();
+            const unitPrice = parseFloat(productUnitPriceInput.value);
+            const quantity = parseInt(productQuantityInput.value);
+
+            console.log("[DEBUG] processFormSubmission: Barcode:", barcode, "Quantity:", quantity);
+
+            if (!barcode || !name || !category || isNaN(unitPrice) || unitPrice <= 0 || isNaN(quantity) || quantity < 0 || !productsCollectionRef) {
+                showMessage('Harap isi semua kolom dengan benar dan pastikan sistem siap.', 'error');
+                return;
+            }
+
+            try {
+                const productDocRef = doc(productsCollectionRef, barcode); // Document ID is the barcode
+                const productData = { barcode, name, category, unitPrice, quantity };
+
+                await setDoc(productDocRef, productData, { merge: true });
+                
+                showMessage(`Produk "${name}" (Barcode: ${barcode}) berhasil ${products.some(p => p.barcode === barcode) ? 'diperbarui' : 'ditambahkan'}.`, 'success');
+            }
+            catch (e) {
+                console.error("Error processing form submission:", e);
+                showMessage(`Gagal menyimpan produk: ${e.message}`, 'error');
+            } finally {
+                clearInputs();
+            }
+        }
+
+        function updateTotals() {
+            let totalItems = 0;
+            let totalPrice = 0;
+            products.forEach(product => {
+                totalItems += product.quantity;
+                totalPrice += (product.unitPrice * product.quantity);
+            });
+
+            totalItemsDisplay.textContent = totalItems;
+            totalPriceDisplay.textContent = 'Rp ' + totalPrice.toLocaleString('id-ID');
+        }
+
+        function showDeleteConfirmation(barcode, productName) {
+            productToDeleteBarcode = barcode;
+            deleteProductMessage.textContent = `Anda yakin ingin menghapus produk "${productName}" (Barcode: ${barcode}) dan semua kuantitasnya dari daftar?`;
+            deleteConfirmationModal.classList.remove('hidden');
+            setTimeout(() => deleteConfirmationModal.classList.add('show'), 10);
+        }
+
+        function hideDeleteConfirmation() {
+            productToDeleteBarcode = null;
+            deleteConfirmationModal.classList.remove('show');
+            deleteConfirmationModal.addEventListener('transitionend', function handler() {
+                deleteConfirmationModal.classList.add('hidden');
+                deleteConfirmationModal.removeEventListener('transitionend', handler);
+            });
+        }
+
+        async function deleteProduct() {
+            if (productToDeleteBarcode && productsCollectionRef) {
+                try {
+                    const productDocRef = doc(productsCollectionRef, productToDeleteBarcode);
+                    await deleteDoc(productDocRef);
+                    showMessage(`Produk dengan barcode "${productToDeleteBarcode}" berhasil dihapus.`, 'success');
+                } catch (e) {
+                    console.error("Error deleting product:", e);
+                    showMessage(`Gagal menghapus produk: ${e.message}`, 'error');
+                } finally {
+                    hideDeleteConfirmation();
+                }
+            } else {
+                hideDeleteConfirmation();
+            }
+        }
+
+        // --- Camera Barcode Scanner Functions ---
+        codeReader = new ZXing.BrowserMultiFormatReader();
+
+        // Mengambil daftar kamera yang tersedia dan mengisi dropdown
+        async function populateMainCameraSelection() {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+                showCameraMessage('Browser Anda tidak mendukung akses kamera.', 'error');
+                startMainCameraButton.disabled = true; return;
+            }
+            try {
+                const videoInputDevices = await codeReader.listVideoInputDevices();
+                mainCameraSelect.innerHTML = '';
+                if (videoInputDevices.length > 0) {
+                    // Menambahkan opsi 'Default Camera' (kamera default browser) di awal
+                    const defaultOption = document.createElement('option');
+                    defaultOption.value = ''; // Nilai kosong berarti kamera default
+                    defaultOption.textContent = 'Kamera Default';
+                    mainCameraSelect.appendChild(defaultOption);
+
+                    videoInputDevices.forEach((device, index) => {
+                        const option = document.createElement('option');
+                        option.value = device.deviceId;
+                        // Memberikan nama yang lebih deskriptif jika tersedia (misal: "front", "back")
+                        // atau fallback ke "Kamera X"
+                        option.textContent = device.label || `Kamera ${index + 1}`; 
+                        mainCameraSelect.appendChild(option);
+                    });
+                    mainCameraSelect.style.display = 'block';
+                    // Tidak langsung memilih kamera pertama, biarkan pengguna memilih default atau yang lain
+                    // selectedMainCameraDeviceId = videoInputDevices[0].deviceId; // Dihapus
+                    showCameraMessage('Pilih kamera dari daftar atau gunakan kamera default.', 'info'); 
+                } else {
+                    showCameraMessage('Tidak ada kamera yang ditemukan.', 'error');
+                    mainCameraSelect.style.display = 'none'; startMainCameraButton.disabled = true;
+                }
+            } catch (err) {
+                console.error('Error getting main camera devices:', err);
+                showCameraMessage(`Gagal mengakses kamera: ${err.message || err.name}.`, 'error');
+                startMainCameraButton.disabled = true;
+            }
+        }
+
+        let selectedMainCameraDeviceId = null; // Variabel ini akan diatur oleh dropdown atau default
+
+        async function startMainCameraScanning() {
+            showCameraMessage('Memulai kamera barcode...');
+            startMainCameraButton.disabled = true;
+
+            // Dapatkan deviceId yang dipilih dari dropdown
+            const currentSelectedDeviceId = mainCameraSelect.value;
+            // Gunakan 'undefined' jika default dipilih agar ZXing memilih kamera default
+            selectedMainCameraDeviceId = currentSelectedDeviceId === '' ? undefined : currentSelectedDeviceId;
+
+            if (!selectedMainCameraDeviceId && mainCameraSelect.options.length > 1) { // Jika tidak ada yang dipilih dan ada opsi selain default
+                showCameraMessage('Harap pilih kamera dari daftar.', 'error');
+                startMainCameraButton.disabled = false;
+                return;
+            }
+            
+            try {
+                showCameraMessage('Kamera barcode aktif. Arahkan ke barcode.', 'info');
+                mainCameraContainer.classList.remove('hidden'); stopMainCameraButton.classList.remove('hidden');
+                
+                // Meneruskan selectedMainCameraDeviceId (bisa undefined untuk default)
+                codeReader.decodeFromVideoDevice(selectedMainCameraDeviceId, mainCameraVideo, async (result, err) => {
+                    if (result) {
+                        console.log("[DEBUG] Main camera detected barcode:", result.text);
+                        await handleBarcodeScan(result.text);
+                        stopMainCameraScanning(); // Stop after successful scan
+                    }
+                    if (err && !(err instanceof ZXing.NotFoundException)) {
+                        console.error('Main camera scanning error:', err);
+                        showCameraMessage(`Gagal memindai barcode: ${err.message || err.name}.`, 'error');
+                    }
+                });
+            } catch (err) {
+                console.error('Error starting main camera scan:', err);
+                showCameraMessage(`Gagal memulai kamera barcode: ${err.message || err.name}.`, 'error');
+                stopMainCameraScanning();
+            }
+        }
+
+        function stopMainCameraScanning() {
+            codeReader.reset(); // Reset ZXing scanner
+            startMainCameraButton.disabled = false;
+            stopMainCameraButton.classList.add('hidden');
+            mainCameraContainer.classList.add('hidden');
+            showCameraMessage('Pemindaian barcode berhenti.');
+        }
+
+
+        // --- Firebase Initialization and Data Listener ---
+        async function initializeFirebaseAndLoadData() {
+            try {
+                // Sign in anonymously if no custom token, or use custom token
+                if (typeof __initial_auth_token !== 'undefined') {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                    console.log("[Firebase] Signed in with custom token.");
+                } else {
+                    await signInAnonymously(auth);
+                    console.log("[Firebase] Signed in anonymously.");
+                }
+
+                // Listen for auth state changes to get userId and set up Firestore listener
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        userIdDisplay.textContent = userId; // Display the user ID
+                        console.log("[Firebase] User authenticated. UID:", userId);
+
+                        // Define Firestore collection path based on app ID and user ID
+                        const specificAppId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+                        productsCollectionRef = collection(db, `artifacts/${specificAppId}/users/${userId}/products_data`);
+                        console.log("[Firebase] Firestore collection path:", `artifacts/${specificAppId}/users/${userId}/products_data`);
+
+                        // Set up real-time listener for products data
+                        if (unsubscribeFromFirestore) {
+                            unsubscribeFromFirestore(); // Unsubscribe from previous listener if any
+                        }
+                        const q = query(productsCollectionRef); // Optional: add orderBy() if needed, but consider Firestore indexing rules
+                        unsubscribeFromFirestore = onSnapshot(q, (snapshot) => {
+                            const fetchedProducts = [];
+                            snapshot.forEach((doc) => {
+                                fetchedProducts.push(doc.data()); // Each document data is a product
+                            });
+                            products = fetchedProducts; // Update local products array with fetched data
+                            renderProductTable(); // Re-render UI
+                            console.log("[Firebase] Data updated from Firestore:", products);
+                        }, (error) => {
+                            console.error("[Firebase] Error listening to Firestore:", error);
+                            showMessage(`Gagal memuat data: ${error.message}`, 'error');
+                        });
+
+                    } else {
+                        userId = null;
+                        userIdDisplay.textContent = 'Tidak Terautentikasi';
+                        console.log("[Firebase] User is signed out or not authenticated.");
+                        if (unsubscribeFromFirestore) {
+                            unsubscribeFromFirestore();
+                            unsubscribeFromFirestore = null;
+                        }
+                        products = []; // Clear local products if no user
+                        renderProductTable(); // Clear table
+                        showMessage('Harap masuk untuk memuat data.', 'info');
+                    }
+                });
+
+            } catch (error) {
+                console.error("[Firebase] Error during Firebase initialization or authentication:", error);
+                userIdDisplay.textContent = 'Error Autentikasi';
+                showMessage(`Gagal terhubung ke Firebase: ${error.message}`, 'error');
+            }
+        }
+
+
+        // --- Event Listeners ---
+        saveProductButton.addEventListener('click', processFormSubmission);
+        clearInputButton.addEventListener('click', clearInputs);
+        barcodeInput.addEventListener('keypress', function(event) { if (event.key === 'Enter') { event.preventDefault(); handleBarcodeScan(barcodeInput.value); } });
+        productNameInput.addEventListener('keypress', function(event) { if (event.key === 'Enter') { event.preventDefault(); productCategoryInput.focus(); } });
+        productCategoryInput.addEventListener('keypress', function(event) { if (event.key === 'Enter') { event.preventDefault(); productUnitPriceInput.focus(); } }
+        );
+        productUnitPriceInput.addEventListener('keypress', function(event) { if (event.key === 'Enter') { event.preventDefault(); productQuantityInput.focus(); } });
+        productQuantityInput.addEventListener('keypress', function(event) { if (event.key === 'Enter') { event.preventDefault(); processFormSubmission(); } });
+
+        // Barcode scanner camera buttons
+        startMainCameraButton.addEventListener('click', startMainCameraScanning);
+        stopMainCameraButton.addEventListener('click', stopMainCameraScanning);
+        // Event listener untuk perubahan pilihan kamera di dropdown
+        mainCameraSelect.addEventListener('change', (event) => { 
+            // Tidak perlu update selectedMainCameraDeviceId di sini secara langsung,
+            // karena akan diambil saat startMainCameraScanning() dipanggil.
+            // Ini untuk memastikan nilai terbaru dari dropdown digunakan.
+            showCameraMessage(`Kamera ${event.target.options[event.target.selectedIndex].text} dipilih.`);
+            stopMainCameraScanning(); // Hentikan kamera jika sedang berjalan untuk memulai ulang dengan kamera baru
+        });
+        
+        confirmDeleteButton.addEventListener('click', deleteProduct);
+        cancelDeleteButton.addEventListener('click', hideDeleteConfirmation);
+
+        // Initialize Firebase and load data when DOM is ready
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Firebase will initialize and load data
+            await initializeFirebaseAndLoadData();
+
+            // Initial render of an empty table (will be updated by Firestore listener)
+            renderProductTable(); 
+            // Populate barcode camera selection immediately
+            await populateMainCameraSelection();
+            barcodeInput.focus(); // Focus barcode input after everything is ready
+        });
+
+        // Ensure camera stream is stopped on page unload
+        window.addEventListener('beforeunload', () => {
+            stopMainCameraScanning(); // Stop barcode scanner camera
+            if (unsubscribeFromFirestore) {
+                unsubscribeFromFirestore(); // Unsubscribe from Firestore listener
+            }
+        });
+    </script>
 </body>
 </html>
