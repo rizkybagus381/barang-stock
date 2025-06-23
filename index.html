@@ -95,8 +95,6 @@
             height: auto;
             display: block;
             object-fit: cover;
-            /* TRANSFORM INI DIHAPUS UNTUK MENGHINDARI MIRROR PADA KAMERA BELAKANG */
-            /* transform: scaleX(-1); */ 
         }
         #mainCameraCanvas { /* Hanya main camera canvas yang tersisa */
             position: absolute;
@@ -204,6 +202,7 @@
         <!-- Area User ID -->
         <div class="mb-6 p-4 bg-blue-900 rounded-xl border border-blue-800 shadow-sm text-center">
             <p class="text-white text-sm">User ID: <span id="userIdDisplay" class="font-mono text-blue-300 break-all">Memuat...</span></p>
+            <p class="text-white text-xs mt-1">Data yang ditampilkan bersifat publik untuk aplikasi ini.</p>
         </div>
 
         <!-- Area Deteksi Kamera Barcode -->
@@ -332,7 +331,7 @@
         const firebaseConfig = {
             apiKey: "AIzaSyD-JgJAv0ZBPzEGW3cSmvVWTfY4Sy12B_g",
             authDomain: "hitungan-stok-barcode.firebaseapp.com",
-            projectId: "hitungan-stok-barcode", // Corrected based on authDomain (from original user input)
+            projectId: "hitungan-stok-barcode", 
             storageBucket: "hitungan-stok-barcode.firebasestorage.app",
             messagingSenderId: "880501835759",
             appId: "1:880501835759:web:6f25176906215cc36e581a",
@@ -607,7 +606,8 @@
                     const productDocRef = doc(productsCollectionRef, productToDeleteBarcode);
                     await deleteDoc(productDocRef);
                     showMessage(`Produk dengan barcode "${productToDeleteBarcode}" berhasil dihapus.`, 'success');
-                } catch (e) {
+                }
+                catch (e) {
                     console.error("Error deleting product:", e);
                     showMessage(`Gagal menghapus produk: ${e.message}`, 'error');
                 } finally {
@@ -671,7 +671,8 @@
             // Gunakan 'undefined' jika default dipilih agar ZXing memilih kamera default
             selectedMainCameraDeviceId = currentSelectedDeviceId === '' ? undefined : currentSelectedDeviceId;
 
-            if (!selectedMainCameraDeviceId && mainCameraSelect.options.length > 1) { // Jika tidak ada yang dipilih dan ada opsi selain default
+            // Jika tidak ada kamera yang dipilih dan ada opsi selain default
+            if (!selectedMainCameraDeviceId && mainCameraSelect.options.length > 1) { 
                 showCameraMessage('Harap pilih kamera dari daftar.', 'error');
                 startMainCameraButton.disabled = false;
                 return;
@@ -682,6 +683,7 @@
                 mainCameraContainer.classList.remove('hidden'); stopMainCameraButton.classList.remove('hidden');
                 
                 // Meneruskan selectedMainCameraDeviceId (bisa undefined untuk default)
+                // MENYESUAIKAN PANGGILAN decodeFromVideoDevice UNTUK MENGHINDARI OverconstrainedError
                 codeReader.decodeFromVideoDevice(selectedMainCameraDeviceId, mainCameraVideo, async (result, err) => {
                     if (result) {
                         console.log("[DEBUG] Main camera detected barcode:", result.text);
@@ -695,7 +697,19 @@
                 });
             } catch (err) {
                 console.error('Error starting main camera scan:', err);
-                showCameraMessage(`Gagal memulai kamera barcode: ${err.message || err.name}.`, 'error');
+                // Tambahkan penanganan OverconstrainedError secara eksplisit di sini
+                if (err.name === "OverconstrainedError") {
+                    showCameraMessage("Gagal memulai kamera: Resolusi atau fitur kamera tidak didukung. Coba pilih 'Kamera Default'.", 'error');
+                } else if (err.name === 'NotAllowedError') {
+                    showCameraMessage('Akses kamera ditolak. Harap izinkan akses kamera di pengaturan browser Anda.', 'error');
+                } else if (err.name === 'NotFoundError') {
+                    showCameraMessage('Tidak ada kamera yang ditemukan. Pastikan kamera terhubung.', 'error');
+                } else if (err.name === 'NotReadableError') {
+                     showCameraMessage('Kamera sedang digunakan atau tidak dapat diakses. Coba tutup aplikasi lain yang mungkin menggunakan kamera.', 'error');
+                }
+                else {
+                    showCameraMessage(`Gagal memulai kamera: ${err.message || err.name}.`, 'error');
+                }
                 stopMainCameraScanning();
             }
         }
@@ -730,8 +744,9 @@
 
                         // Define Firestore collection path based on app ID and user ID
                         const specificAppId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-                        productsCollectionRef = collection(db, `artifacts/${specificAppId}/users/${userId}/products_data`);
-                        console.log("[Firebase] Firestore collection path:", `artifacts/${specificAppId}/users/${userId}/products_data`);
+                        // *** PERUBAHAN JALUR KOLEKSI UNTUK SINKRONISASI LINTAS PERANGKAT ***
+                        productsCollectionRef = collection(db, `artifacts/${specificAppId}/public/data/products_data`);
+                        console.log("[Firebase] Firestore collection path:", `artifacts/${specificAppId}/public/data/products_data`);
 
                         // Set up real-time listener for products data
                         if (unsubscribeFromFirestore) {
