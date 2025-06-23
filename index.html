@@ -17,7 +17,7 @@
             font-family: 'Inter', sans-serif;
             margin: 0;
             min-height: 100vh; /* Menggunakan min-height agar bisa di-scroll jika konten lebih panjang */
-            overflow-y: auto; /* Memungkinkan scrolling vertikal */
+            overflow-y: auto; /* Memungkinkan scrolling vertikal untuk konten utama */
             background-color: #1a202c; /* Latar belakang body sangat gelap (dark gray) */
             color: #e2e8f0; /* Teks default terang */
         }
@@ -271,6 +271,7 @@
 
     <!-- Video Background -->
     <video id="backgroundVideo" autoplay muted loop playsinline class="background-video" aria-label="Abstract colorful animated video background with smooth gradient tones">
+        <!-- Menggunakan URL video dari codingan yang diberikan pengguna -->
         <source src="https://s8.ezgif.com/tmp/ezgif-84c9f442c94bc.mp4" type="video/mp4"/>
         Your browser does not support the video tag.
     </video>
@@ -278,7 +279,8 @@
     <!-- Layar Login -->
     <div id="loginScreen" class="min-h-screen flex items-center justify-center fixed inset-0 z-10">
         <div id="login-form-container" class="w-[320px] sm:w-[360px]">
-            <img alt="A smooth gradient sphere with blue, purple, and teal colors on black background" class="mb-10 w-24 h-24 rounded-full" height="100" src="https://storage.googleapis.com/a1aa/image/34067bf0-83ef-4e89-f747-103482722e8b.jpg" width="100"/>
+            <!-- Menggunakan URL gambar GIF dari codingan yang diberikan pengguna -->
+            <img alt="Animated colorful circular logo GIF with swirling blue and purple tones" class="mb-10 w-24 h-24 rounded-full" height="100" src="https://i.pinimg.com/originals/e5/d6/8b/e5d68b4c0923839b89fefb727afb9742.gif" width="100"/>
             
             <form id="loginForm" class="w-full space-y-4"> <!-- Added id="loginForm" -->
                 <input class="login-input-new w-full" id="usernameInput" type="text" placeholder="USERNAME" value=""/>
@@ -878,7 +880,7 @@
             } catch (error) {
                 console.error("[Firebase] Error during Firebase initialization or authentication:", error);
                 userIdDisplay.textContent = 'Error Autentikasi';
-                showMessage(`Gagal terhubung ke Firebase: ${error.message}`, 'error');
+                showMessage(`Gagal terhubung ke Firebase: ${e.message}`, 'error');
             }
         }
 
