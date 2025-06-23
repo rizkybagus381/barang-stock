@@ -8,14 +8,34 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Memuat pustaka ZXing-JS untuk deteksi barcode kamera -->
     <script type="text/javascript" src="https://unpkg.com/@zxing/library@latest"></script>
+    <!-- Memuat Font Awesome untuk ikon mata di password -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet"/>
     <style>
         /* Gaya kustom untuk font dan warna latar belakang */
+        @import url('https://fonts.googleapis.com/css2?family=Inter&display=swap');
         body {
-            font-family: 'Inter', sans-serif; /* Font modern yang menyerupai SF Pro */
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            min-height: 100vh; /* Menggunakan min-height agar bisa di-scroll jika konten lebih panjang */
+            overflow-y: auto; /* Memungkinkan scrolling vertikal */
             background-color: #1a202c; /* Latar belakang body sangat gelap (dark gray) */
             color: #e2e8f0; /* Teks default terang */
         }
-        /* Gaya untuk tabel */
+        /* Video background styles */
+        .background-video {
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        /* Class untuk menyembunyikan video setelah login */
+        .hide-video {
+            display: none;
+        }
+
+        /* Gaya untuk tabel (main app) */
         table {
             width: 100%;
             border-collapse: collapse;
@@ -79,8 +99,8 @@
             td:nth-of-type(7):before { content: "Aksi:"; }
         }
 
-        /* Gaya untuk area kamera */
-        #mainCameraContainer { /* Hanya main camera container yang tersisa */
+        /* Gaya untuk area kamera (main app) */
+        #mainCameraContainer {
             position: relative;
             width: 100%;
             max-width: 400px;
@@ -90,13 +110,13 @@
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
             background-color: #000;
         }
-        #mainCameraVideo { /* Hanya main camera video yang tersisa */
+        #mainCameraVideo {
             width: 100%;
             height: auto;
             display: block;
             object-fit: cover;
         }
-        #mainCameraCanvas { /* Hanya main camera canvas yang tersisa */
+        #mainCameraCanvas {
             position: absolute;
             top: 0;
             left: 0;
@@ -131,10 +151,7 @@
         /* Gaya untuk modal konfirmasi hapus */
         #deleteConfirmationModal {
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            inset: 0; /* Menggunakan inset:0 sebagai ganti top,left,right,bottom:0 */
             background-color: rgba(0, 0, 0, 0.6);
             display: flex;
             justify-content: center;
@@ -164,7 +181,7 @@
             transform: translateY(0);
         }
 
-        /* Input field focus style */
+        /* Input field focus style (main app) */
         input {
             background-color: #2d3748;
             color: #e2e8f0;
@@ -180,7 +197,7 @@
             background-color: #2d3748;
         }
 
-        /* Select box styles */
+        /* Select box styles (main app) */
         select {
             background-color: #2d3748;
             color: #e2e8f0;
@@ -191,12 +208,100 @@
             border-color: #6366f1;
             box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.4);
         }
+        /* Login specific styles - from user's provided HTML */
+        #login-form-container { /* This is the bg-black bg-opacity-90 div */
+            background-color: rgba(0, 0, 0, 0.9);
+            border-radius: 32px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+            width: 320px;
+            height: 480px; /* Tinggi fix untuk menjaga proporsi seperti gambar */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center; /* Memusatkan konten secara vertikal */
+            padding: 2rem;
+        }
+        @media (min-width: 640px) { /* sm breakpoint */
+            #login-form-container {
+                width: 360px;
+            }
+        }
+        .login-input-new { /* Renamed to avoid conflict with existing 'login-input' in style tag */
+            background-color: transparent;
+            border: 1px solid #9CA3AF; /* gray-400 */
+            border-radius: 0.5rem; /* rounded-lg */
+            padding: 0.5rem 1rem; /* px-4 py-2 */
+            font-size: 0.75rem; /* text-xs */
+            color: #F9FAFB; /* text-white */
+            outline: none;
+            font-weight: 400; /* Normal font weight */
+            transition: all 0.2s ease-in-out;
+            text-transform: uppercase; /* text-transform: uppercase; */
+        }
+        .login-input-new::placeholder {
+            color: #F9FAFB; /* placeholder-white */
+        }
+        .login-input-new:focus {
+            outline: none;
+            ring: 1px;
+            ring-color: #9CA3AF; /* focus:ring-1 focus:ring-gray-400 */
+        }
+
+        .login-button-new { /* Renamed to avoid conflict */
+            background-color: #F3F4F6; /* gray-100 */
+            color: #1F2937; /* text-black (custom dark for button) */
+            font-size: 0.75rem; /* text-xs */
+            border-radius: 0.5rem; /* rounded-lg */
+            padding: 0.5rem 0.75rem; /* py-2 px-3 */
+            font-weight: 400; /* font-normal */
+            transition: all 0.2s ease-in-out;
+        }
+        .login-button-new:hover {
+            background-color: #E5E7EB; /* Lighter gray on hover */
+            transform: translateY(-1px);
+        }
+        /* Icon styling from Font Awesome (fas fa-eye-slash) */
+        .fa-eye-slash, .fa-eye {
+            color: #9CA3AF; /* gray-400 */
+            font-size: 0.875rem; /* text-sm */
+        }
     </style>
 </head>
-<body class="bg-gray-900 p-4 sm:p-8 flex items-center justify-center min-h-screen">
+<body class="bg-gray-900 flex items-center justify-center min-h-screen">
 
-    <!-- Konten Aplikasi Utama (Sekarang Selalu Terlihat) -->
-    <div id="mainAppContent" class="bg-gray-800 p-6 rounded-2xl shadow-xl w-full max-w-4xl border border-gray-700">
+    <!-- Video Background -->
+    <video id="backgroundVideo" autoplay muted loop playsinline class="background-video" aria-label="Abstract colorful animated video background with smooth gradient tones">
+        <source src="https://s8.ezgif.com/tmp/ezgif-84c9f442c94bc.mp4" type="video/mp4"/>
+        Your browser does not support the video tag.
+    </video>
+
+    <!-- Layar Login -->
+    <div id="loginScreen" class="min-h-screen flex items-center justify-center fixed inset-0 z-10">
+        <div id="login-form-container" class="w-[320px] sm:w-[360px]">
+            <img alt="A smooth gradient sphere with blue, purple, and teal colors on black background" class="mb-10 w-24 h-24 rounded-full" height="100" src="https://storage.googleapis.com/a1aa/image/34067bf0-83ef-4e89-f747-103482722e8b.jpg" width="100"/>
+            
+            <form id="loginForm" class="w-full space-y-4"> <!-- Added id="loginForm" -->
+                <input class="login-input-new w-full" id="usernameInput" type="text" placeholder="USERNAME" value=""/>
+                <div class="relative">
+                    <input class="login-input-new w-full pr-10" id="passwordInput" type="password" placeholder="PASSWORD" value=""/>
+                    <i id="togglePassword" class="fas fa-eye-slash absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer"></i>
+                </div>
+                <p class="text-red-400 mb-4 text-xs text-center" id="loginErrorMessage"></p>
+                <div class="text-center text-[9px] text-white mb-4 select-none">
+                    LUPA KATA SANDI?
+                </div>
+                <button type="button" id="signInButton" class="login-button-new w-full"> <!-- Changed type to "button" -->
+                    MASUK
+                </button>
+            </form>
+            <div class="text-[7px] text-gray-700 mt-6 select-none">
+                VERSION 6.2.0
+            </div>
+        </div>
+    </div>
+
+    <!-- Konten Aplikasi Utama (Awalnya Tersembunyi) -->
+    <div id="mainAppContent" class="bg-gray-800 p-6 rounded-2xl shadow-xl w-full max-w-4xl border border-gray-700 hidden relative z-0">
         <h1 class="text-3xl font-bold text-white mb-6 text-center">Sistem Data Barcode Produk Jadi</h1>
 
         <!-- Area User ID -->
@@ -293,7 +398,7 @@
                         <th class="py-3 px-6 text-left text-sm font-medium uppercase tracking-wider">Harga Satuan</th>
                         <th class="py-3 px-6 text-left text-sm font-medium uppercase tracking-wider">Jumlah</th>
                         <th class="py-3 px-6 text-left text-sm font-medium uppercase tracking-wider">Total Harga</th>
-                        <th class="py-3 px-6 text-left text-sm font-medium uppercase tracking-wider rounded-tr-lg">Aksi</th>
+                        <th class="py-3 px-6 text-left text-sm font-medium uppercase tracking-wider">Aksi</th>
                     </tr>
                 </thead>
                 <tbody id="productTableBody" class="bg-gray-700 divide-y divide-gray-600">
@@ -327,7 +432,7 @@
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, deleteDoc, collection, onSnapshot, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Firebase Configuration (provided by user)
+        // Firebase Configuration
         const firebaseConfig = {
             apiKey: "AIzaSyD-JgJAv0ZBPzEGW3cSmvVWTfY4Sy12B_g",
             authDomain: "hitungan-stok-barcode.firebaseapp.com",
@@ -346,17 +451,25 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        let userId = null; // User ID will be set after authentication
-        let productsCollectionRef = null; // Reference to the Firestore collection
-        let unsubscribeFromFirestore = null; // Function to unsubscribe from Firestore listener
-
-        // Array to store unique product definitions along with their quantities.
-        // This array will be kept in sync with Firestore.
+        let userId = null; 
+        let productsCollectionRef = null; 
+        let unsubscribeFromFirestore = null; 
         let products = [];
-        // Variable to temporarily store the barcode of the product to be deleted
         let productToDeleteBarcode = null; 
         
-        // Get references to HTML elements by their IDs (same as before)
+        // --- HTML Elements ---
+        // Login Screen Elements
+        const loginScreen = document.getElementById('loginScreen');
+        const usernameInput = document.getElementById('usernameInput');
+        const passwordInput = document.getElementById('passwordInput');
+        const togglePassword = document.getElementById('togglePassword');
+        const signInButton = document.getElementById('signInButton');
+        const loginErrorMessage = document.getElementById('loginErrorMessage');
+        const loginForm = document.getElementById('loginForm'); // Reference to the form element
+        const backgroundVideo = document.getElementById('backgroundVideo'); // Reference to the video element
+
+        // Main App Elements
+        const mainAppContent = document.getElementById('mainAppContent');
         const barcodeInput = document.getElementById('barcodeInput');
         const productNameInput = document.getElementById('productNameInput');
         const productCategoryInput = document.getElementById('productCategoryInput');
@@ -366,12 +479,11 @@
         const clearInputButton = document.getElementById('clearInputButton');
         const productTableBody = document.getElementById('productTableBody');
         const messageArea = document.getElementById('messageArea');
-
         const totalItemsDisplay = document.getElementById('totalItemsDisplay');
         const totalPriceDisplay = document.getElementById('totalPriceDisplay');
-        const userIdDisplay = document.getElementById('userIdDisplay'); // To display user ID
+        const userIdDisplay = document.getElementById('userIdDisplay');
 
-        // Elements for Main App Camera (barcode scanner)
+        // Camera Elements (for barcode scanning)
         const mainCameraVideo = document.getElementById('mainCameraVideo');
         const mainCameraCanvas = document.getElementById('mainCameraCanvas');
         const mainCameraContainer = document.getElementById('mainCameraContainer');
@@ -380,19 +492,19 @@
         const startMainCameraButton = document.getElementById('startMainCameraButton');
         const stopMainCameraButton = document.getElementById('stopMainCameraButton');
 
+        // Modals
         const deleteConfirmationModal = document.getElementById('deleteConfirmationModal');
         const deleteProductMessage = document.getElementById('deleteProductMessage');
         const confirmDeleteButton = document.getElementById('confirmDeleteButton');
         const cancelDeleteButton = document.getElementById('cancelDeleteButton');
 
-        let codeReader; // ZXing CodeReader object for barcode scanner
+        let codeReader; // ZXing CodeReader object
 
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         const audioContext = AudioContext ? new AudioContext() : null;
 
-        // --- Core Functions (playBeep, showMessage, etc.) ---
-
-        function playBeep() {
+        // --- Core Utility Functions ---
+        function playBeep() { /* ... (same as before) ... */
             if (!audioContext) { console.warn('Web Audio API not supported.'); return; }
             if (audioContext.state === 'suspended') { audioContext.resume(); }
             const oscillator = audioContext.createOscillator();
@@ -407,7 +519,7 @@
             oscillator.stop(audioContext.currentTime + 0.08);
         }
 
-        function showMessage(msg, type = 'info') {
+        function showMessage(msg, type = 'info') { /* ... (same as before) ... */
             messageArea.textContent = msg;
             if (type === 'success') {
                 messageArea.className = 'mt-4 text-center font-medium text-green-400';
@@ -418,7 +530,7 @@
             }
         }
 
-        function showCameraMessage(msg, type = 'info') {
+        function showCameraMessage(msg, type = 'info') { /* ... (same as before) ... */
             const targetMessageArea = mainCameraMessage;
             targetMessageArea.textContent = msg;
             if (type === 'error') {
@@ -428,7 +540,7 @@
             }
         }
 
-        function clearInputs() {
+        function clearInputs() { /* ... (same as before) ... */
             barcodeInput.value = '';
             productNameInput.value = '';
             productCategoryInput.value = '';
@@ -438,7 +550,7 @@
             barcodeInput.focus();
         }
 
-        function renderProductTable() {
+        function renderProductTable() { /* ... (same as before) ... */
             console.log("[DEBUG] renderProductTable: Rendering table. Current products:", products);
             productTableBody.innerHTML = '';
 
@@ -455,7 +567,7 @@
             const sortedProducts = [...products].sort((a, b) => a.barcode.localeCompare(b.barcode));
 
             sortedProducts.forEach(product => {
-                const row = productTableBody.insertRow();
+                const row = productTableBody.insertRow(); // Menggunakan productTableBody
                 row.className = 'hover:bg-gray-600 transition duration-150 ease-in-out';
 
                 const barcodeCell = row.insertCell();
@@ -493,7 +605,7 @@
             updateTotals();
         }
 
-        async function handleBarcodeScan(barcodeValue) {
+        async function handleBarcodeScan(barcodeValue) { /* ... (same as before) ... */
             playBeep();
             const barcode = barcodeValue.trim();
             console.log("[DEBUG] handleBarcodeScan: Processing barcode:", barcode);
@@ -510,15 +622,15 @@
                 if (existingProduct) {
                     const newQuantity = existingProduct.quantity + 1;
                     const productDocRef = doc(productsCollectionRef, barcode);
-                    await setDoc(productDocRef, { quantity: newQuantity }, { merge: true }); // Merge to only update quantity
+                    await setDoc(productDocRef, { quantity: newQuantity }, { merge: true });
                     showMessage(`Kuantitas "${existingProduct.name}" (Barcode: ${barcode}) ditingkatkan menjadi ${newQuantity}.`, 'success');
-                    fillFormWithProductDetails({ ...existingProduct, quantity: newQuantity }); // Optimistic UI update
+                    fillFormWithProductDetails({ ...existingProduct, quantity: newQuantity });
                 } else {
                     barcodeInput.value = barcode;
                     productNameInput.value = '';
                     productCategoryInput.value = '';
                     productUnitPriceInput.value = '';
-                    productQuantityInput.value = 1; // Default to 1 for new products
+                    productQuantityInput.value = 1;
                     showMessage(`Barcode "${barcode}" terdeteksi. Harap lengkapi detail produk baru dan klik 'Tambah/Perbarui Produk'.`, 'info');
                 }
             } catch (e) {
@@ -529,7 +641,7 @@
             }
         }
 
-        function fillFormWithProductDetails(product) {
+        function fillFormWithProductDetails(product) { /* ... (same as before) ... */
             console.log("[DEBUG] fillFormWithProductDetails: Filling form with product:", product);
             if (product) {
                 barcodeInput.value = product.barcode;
@@ -542,7 +654,7 @@
             }
         }
 
-        async function processFormSubmission() {
+        async function processFormSubmission() { /* ... (same as before) ... */
             const barcode = barcodeInput.value.trim();
             const name = productNameInput.value.trim();
             const category = productCategoryInput.value.trim();
@@ -557,7 +669,7 @@
             }
 
             try {
-                const productDocRef = doc(productsCollectionRef, barcode); // Document ID is the barcode
+                const productDocRef = doc(productsCollectionRef, barcode);
                 const productData = { barcode, name, category, unitPrice, quantity };
 
                 await setDoc(productDocRef, productData, { merge: true });
@@ -572,7 +684,7 @@
             }
         }
 
-        function updateTotals() {
+        function updateTotals() { /* ... (same as before) ... */
             let totalItems = 0;
             let totalPrice = 0;
             products.forEach(product => {
@@ -584,14 +696,14 @@
             totalPriceDisplay.textContent = 'Rp ' + totalPrice.toLocaleString('id-ID');
         }
 
-        function showDeleteConfirmation(barcode, productName) {
+        function showDeleteConfirmation(barcode, productName) { /* ... (same as before) ... */
             productToDeleteBarcode = barcode;
             deleteProductMessage.textContent = `Anda yakin ingin menghapus produk "${productName}" (Barcode: ${barcode}) dan semua kuantitasnya dari daftar?`;
             deleteConfirmationModal.classList.remove('hidden');
             setTimeout(() => deleteConfirmationModal.classList.add('show'), 10);
         }
 
-        function hideDeleteConfirmation() {
+        function hideDeleteConfirmation() { /* ... (same as before) ... */
             productToDeleteBarcode = null;
             deleteConfirmationModal.classList.remove('show');
             deleteConfirmationModal.addEventListener('transitionend', function handler() {
@@ -600,7 +712,7 @@
             });
         }
 
-        async function deleteProduct() {
+        async function deleteProduct() { /* ... (same as before) ... */
             if (productToDeleteBarcode && productsCollectionRef) {
                 try {
                     const productDocRef = doc(productsCollectionRef, productToDeleteBarcode);
@@ -621,8 +733,7 @@
         // --- Camera Barcode Scanner Functions ---
         codeReader = new ZXing.BrowserMultiFormatReader();
 
-        // Mengambil daftar kamera yang tersedia dan mengisi dropdown
-        async function populateMainCameraSelection() {
+        async function populateMainCameraSelection() { /* ... (same as before) ... */
             if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
                 showCameraMessage('Browser Anda tidak mendukung akses kamera.', 'error');
                 startMainCameraButton.disabled = true; return;
@@ -631,23 +742,18 @@
                 const videoInputDevices = await codeReader.listVideoInputDevices();
                 mainCameraSelect.innerHTML = '';
                 if (videoInputDevices.length > 0) {
-                    // Menambahkan opsi 'Default Camera' (kamera default browser) di awal
                     const defaultOption = document.createElement('option');
-                    defaultOption.value = ''; // Nilai kosong berarti kamera default
+                    defaultOption.value = '';
                     defaultOption.textContent = 'Kamera Default';
                     mainCameraSelect.appendChild(defaultOption);
 
                     videoInputDevices.forEach((device, index) => {
                         const option = document.createElement('option');
                         option.value = device.deviceId;
-                        // Memberikan nama yang lebih deskriptif jika tersedia (misal: "front", "back")
-                        // atau fallback ke "Kamera X"
                         option.textContent = device.label || `Kamera ${index + 1}`; 
                         mainCameraSelect.appendChild(option);
                     });
                     mainCameraSelect.style.display = 'block';
-                    // Tidak langsung memilih kamera pertama, biarkan pengguna memilih default atau yang lain
-                    // selectedMainCameraDeviceId = videoInputDevices[0].deviceId; // Dihapus
                     showCameraMessage('Pilih kamera dari daftar atau gunakan kamera default.', 'info'); 
                 } else {
                     showCameraMessage('Tidak ada kamera yang ditemukan.', 'error');
@@ -660,18 +766,15 @@
             }
         }
 
-        let selectedMainCameraDeviceId = null; // Variabel ini akan diatur oleh dropdown atau default
+        let selectedMainCameraDeviceId = null;
 
-        async function startMainCameraScanning() {
+        async function startMainCameraScanning() { /* ... (same as before) ... */
             showCameraMessage('Memulai kamera barcode...');
             startMainCameraButton.disabled = true;
 
-            // Dapatkan deviceId yang dipilih dari dropdown
             const currentSelectedDeviceId = mainCameraSelect.value;
-            // Gunakan 'undefined' jika default dipilih agar ZXing memilih kamera default
             selectedMainCameraDeviceId = currentSelectedDeviceId === '' ? undefined : currentSelectedDeviceId;
 
-            // Jika tidak ada kamera yang dipilih dan ada opsi selain default
             if (!selectedMainCameraDeviceId && mainCameraSelect.options.length > 1) { 
                 showCameraMessage('Harap pilih kamera dari daftar.', 'error');
                 startMainCameraButton.disabled = false;
@@ -682,13 +785,11 @@
                 showCameraMessage('Kamera barcode aktif. Arahkan ke barcode.', 'info');
                 mainCameraContainer.classList.remove('hidden'); stopMainCameraButton.classList.remove('hidden');
                 
-                // Meneruskan selectedMainCameraDeviceId (bisa undefined untuk default)
-                // MENYESUAIKAN PANGGILAN decodeFromVideoDevice UNTUK MENGHINDARI OverconstrainedError
                 codeReader.decodeFromVideoDevice(selectedMainCameraDeviceId, mainCameraVideo, async (result, err) => {
                     if (result) {
                         console.log("[DEBUG] Main camera detected barcode:", result.text);
                         await handleBarcodeScan(result.text);
-                        stopMainCameraScanning(); // Stop after successful scan
+                        stopMainCameraScanning();
                     }
                     if (err && !(err instanceof ZXing.NotFoundException)) {
                         console.error('Main camera scanning error:', err);
@@ -697,7 +798,6 @@
                 });
             } catch (err) {
                 console.error('Error starting main camera scan:', err);
-                // Tambahkan penanganan OverconstrainedError secara eksplisit di sini
                 if (err.name === "OverconstrainedError") {
                     showCameraMessage("Gagal memulai kamera: Resolusi atau fitur kamera tidak didukung. Coba pilih 'Kamera Default'.", 'error');
                 } else if (err.name === 'NotAllowedError') {
@@ -714,8 +814,8 @@
             }
         }
 
-        function stopMainCameraScanning() {
-            codeReader.reset(); // Reset ZXing scanner
+        function stopMainCameraScanning() { /* ... (same as before) ... */
+            codeReader.reset();
             startMainCameraButton.disabled = false;
             stopMainCameraButton.classList.add('hidden');
             mainCameraContainer.classList.add('hidden');
@@ -724,9 +824,8 @@
 
 
         // --- Firebase Initialization and Data Listener ---
-        async function initializeFirebaseAndLoadData() {
+        async function initializeFirebaseAndLoadData() { /* ... (same as before) ... */
             try {
-                // Sign in anonymously if no custom token, or use custom token
                 if (typeof __initial_auth_token !== 'undefined') {
                     await signInWithCustomToken(auth, __initial_auth_token);
                     console.log("[Firebase] Signed in with custom token.");
@@ -735,31 +834,27 @@
                     console.log("[Firebase] Signed in anonymously.");
                 }
 
-                // Listen for auth state changes to get userId and set up Firestore listener
                 onAuthStateChanged(auth, (user) => {
                     if (user) {
                         userId = user.uid;
-                        userIdDisplay.textContent = userId; // Display the user ID
+                        userIdDisplay.textContent = userId;
                         console.log("[Firebase] User authenticated. UID:", userId);
 
-                        // Define Firestore collection path based on app ID and user ID
                         const specificAppId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-                        // *** PERUBAHAN JALUR KOLEKSI UNTUK SINKRONISASI LINTAS PERANGKAT ***
                         productsCollectionRef = collection(db, `artifacts/${specificAppId}/public/data/products_data`);
                         console.log("[Firebase] Firestore collection path:", `artifacts/${specificAppId}/public/data/products_data`);
 
-                        // Set up real-time listener for products data
                         if (unsubscribeFromFirestore) {
-                            unsubscribeFromFirestore(); // Unsubscribe from previous listener if any
+                            unsubscribeFromFirestore();
                         }
-                        const q = query(productsCollectionRef); // Optional: add orderBy() if needed, but consider Firestore indexing rules
+                        const q = query(productsCollectionRef);
                         unsubscribeFromFirestore = onSnapshot(q, (snapshot) => {
                             const fetchedProducts = [];
                             snapshot.forEach((doc) => {
-                                fetchedProducts.push(doc.data()); // Each document data is a product
+                                fetchedProducts.push(doc.data());
                             });
-                            products = fetchedProducts; // Update local products array with fetched data
-                            renderProductTable(); // Re-render UI
+                            products = fetchedProducts;
+                            renderProductTable();
                             console.log("[Firebase] Data updated from Firestore:", products);
                         }, (error) => {
                             console.error("[Firebase] Error listening to Firestore:", error);
@@ -774,8 +869,8 @@
                             unsubscribeFromFirestore();
                             unsubscribeFromFirestore = null;
                         }
-                        products = []; // Clear local products if no user
-                        renderProductTable(); // Clear table
+                        products = [];
+                        renderProductTable();
                         showMessage('Harap masuk untuk memuat data.', 'info');
                     }
                 });
@@ -787,8 +882,66 @@
             }
         }
 
+        // --- Login Logic ---
+        function handleLogin() {
+            const username = usernameInput.value.trim();
+            const password = passwordInput.value.trim();
+            const correctUsername = "admin"; // Defined correct username
+            const correctPassword = "admin123"; // Defined correct password
+
+            if (username === correctUsername && password === correctPassword) {
+                loginErrorMessage.textContent = ""; // Clear any previous error
+                loginScreen.classList.add('hidden'); // Hide login screen
+                mainAppContent.classList.remove('hidden'); // Show main app content
+                backgroundVideo.classList.add('hide-video'); // Sembunyikan video background
+
+                // Now that the main app is visible, initialize its components
+                initializeFirebaseAndLoadData(); // Start Firebase init and data loading
+                populateMainCameraSelection(); // Populate barcode camera selection
+                barcodeInput.focus(); // Focus barcode input after login
+            } else {
+                loginErrorMessage.textContent = "Username atau password salah. Silakan coba lagi.";
+            }
+        }
 
         // --- Event Listeners ---
+        // Login button and Enter key for login form
+        signInButton.addEventListener('click', handleLogin);
+        // Add event listener to the form's submit event to prevent default behavior
+        loginForm.addEventListener('submit', function(event) {
+            event.preventDefault(); // Prevent default form submission (page reload)
+            handleLogin(); // Call handleLogin function
+        });
+
+        passwordInput.addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                // If Enter is pressed on password field, prevent default and try to log in
+                event.preventDefault(); 
+                handleLogin();
+            }
+        });
+        usernameInput.addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                passwordInput.focus();
+            }
+        });
+
+        // Toggle password visibility
+        togglePassword.addEventListener('click', function() {
+            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInput.setAttribute('type', type);
+            // Toggle Font Awesome eye icon
+            if (type === 'password') {
+                this.classList.add('fa-eye-slash');
+                this.classList.remove('fa-eye');
+            } else {
+                this.classList.remove('fa-eye-slash');
+                this.classList.add('fa-eye');
+            }
+        });
+
+
         saveProductButton.addEventListener('click', processFormSubmission);
         clearInputButton.addEventListener('click', clearInputs);
         barcodeInput.addEventListener('keypress', function(event) { if (event.key === 'Enter') { event.preventDefault(); handleBarcodeScan(barcodeInput.value); } });
@@ -801,35 +954,29 @@
         // Barcode scanner camera buttons
         startMainCameraButton.addEventListener('click', startMainCameraScanning);
         stopMainCameraButton.addEventListener('click', stopMainCameraScanning);
-        // Event listener untuk perubahan pilihan kamera di dropdown
         mainCameraSelect.addEventListener('change', (event) => { 
-            // Tidak perlu update selectedMainCameraDeviceId di sini secara langsung,
-            // karena akan diambil saat startMainCameraScanning() dipanggil.
-            // Ini untuk memastikan nilai terbaru dari dropdown digunakan.
             showCameraMessage(`Kamera ${event.target.options[event.target.selectedIndex].text} dipilih.`);
-            stopMainCameraScanning(); // Hentikan kamera jika sedang berjalan untuk memulai ulang dengan kamera baru
+            stopMainCameraScanning(); 
         });
         
         confirmDeleteButton.addEventListener('click', deleteProduct);
         cancelDeleteButton.addEventListener('click', hideDeleteConfirmation);
 
-        // Initialize Firebase and load data when DOM is ready
+        // Initialize on DOMContentLoaded: show login screen, focus username input
         document.addEventListener('DOMContentLoaded', async () => {
-            // Firebase will initialize and load data
-            await initializeFirebaseAndLoadData();
-
-            // Initial render of an empty table (will be updated by Firestore listener)
-            renderProductTable(); 
-            // Populate barcode camera selection immediately
-            await populateMainCameraSelection();
-            barcodeInput.focus(); // Focus barcode input after everything is ready
+            // Initially show login screen and hide main app
+            loginScreen.classList.remove('hidden');
+            mainAppContent.classList.add('hidden');
+            usernameInput.focus(); // Focus on username input on page load
+            // Firebase and camera initialization for main app will happen ONLY after successful login
+            // renderProductTable() is called by Firestore onSnapshot, so no need here.
         });
 
         // Ensure camera stream is stopped on page unload
         window.addEventListener('beforeunload', () => {
-            stopMainCameraScanning(); // Stop barcode scanner camera
+            stopMainCameraScanning();
             if (unsubscribeFromFirestore) {
-                unsubscribeFromFirestore(); // Unsubscribe from Firestore listener
+                unsubscribeFromFirestore();
             }
         });
     </script>
