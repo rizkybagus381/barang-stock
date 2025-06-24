@@ -21,8 +21,8 @@
             background-color: #1a202c; /* Latar belakang body sangat gelap (dark gray) */
             color: #e2e8f0; /* Teks default terang */
         }
-        /* Video background styles */
-        .background-video {
+        /* Video/GIF background styles */
+        .background-gif {
             position: fixed;
             inset: 0;
             z-index: -1;
@@ -30,10 +30,91 @@
             height: 100%;
             object-fit: cover;
         }
-        /* Class untuk menyembunyikan video setelah login */
-        .hide-video {
+        /* Class untuk menyembunyikan GIF setelah login */
+        .hide-gif {
             display: none;
         }
+
+        /* NEW GLASSMORHISM STYLES FOR LOGIN FORM */
+        .glass-container {
+            background: rgba(255 255 255 / 0.1);
+            backdrop-filter: saturate(180%) blur(30px);
+            -webkit-backdrop-filter: saturate(180%) blur(30px);
+            border-radius: 1.5rem;
+            border: 1px solid rgba(255 255 255 / 0.2);
+        }
+        .glass-button {
+            background: rgba(255 255 255 / 0.8);
+            backdrop-filter: saturate(180%) blur(30px);
+            -webkit-backdrop-filter: saturate(180%) blur(30px);
+            border-radius: 0.5rem;
+            border: 1px solid rgba(255 255 255 / 0.4);
+            color: black;
+            font-weight: 400;
+            font-size: 0.75rem;
+            padding-top: 0.5rem;
+            padding-bottom: 0.5rem;
+            width: 100%;
+            text-align: center;
+            transition: all 0.2s ease-in-out; /* Added transition for hover */
+        }
+        .glass-button:hover { /* Added hover effect */
+            background: rgba(255 255 255 / 1);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        input.glass-input {
+            background: rgba(255 255 255 / 0.1);
+            border: 1px solid rgba(255 255 255 / 0.3);
+            color: white;
+            font-size: 0.75rem;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            backdrop-filter: saturate(180%) blur(30px);
+            -webkit-backdrop-filter: saturate(180%) blur(30px);
+            transition: all 0.2s ease-in-out; /* Added transition for focus */
+        }
+        input.glass-input::placeholder {
+            color: rgba(255 255 255 / 0.7);
+            text-transform: uppercase;
+        }
+        input.glass-input:focus {
+            outline: none;
+            border-color: rgba(255 255 255 / 0.6);
+            box-shadow: 0 0 5px rgba(255 255 255 / 0.6);
+            background: rgba(255 255 255 / 0.15);
+        }
+        .eye-icon {
+            color: rgba(255 255 255 / 0.7);
+            cursor: pointer;
+            font-size: 0.75rem;
+            position: absolute;
+            right: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        .forgot-text {
+            font-size: 0.5625rem; /* 9px */
+            color: rgba(255 255 255 / 0.8);
+            user-select: none;
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+        .version-text {
+            font-size: 0.4375rem; /* 7px */
+            color: rgba(255 255 255 / 0.4);
+            user-select: none;
+            margin-top: 1.5rem;
+        }
+        .logo-img {
+            border-radius: 9999px;
+            width: 6rem; /* 96px */
+            height: 6rem; /* 96px */
+            object-fit: cover;
+            margin-bottom: 2.5rem;
+            display: block;
+        }
+        /* END NEW GLASSMORHISM STYLES */
 
         /* Gaya untuk tabel (main app) */
         table {
@@ -208,96 +289,38 @@
             border-color: #6366f1;
             box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.4);
         }
-        /* Login specific styles - from user's provided HTML */
-        #login-form-container { /* This is the bg-black bg-opacity-90 div */
-            background-color: rgba(0, 0, 0, 0.9);
-            border-radius: 32px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
-            width: 320px;
-            height: 480px; /* Tinggi fix untuk menjaga proporsi seperti gambar */
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center; /* Memusatkan konten secara vertikal */
-            padding: 2rem;
-        }
-        @media (min-width: 640px) { /* sm breakpoint */
-            #login-form-container {
-                width: 360px;
-            }
-        }
-        .login-input-new { /* Renamed to avoid conflict with existing 'login-input' in style tag */
-            background-color: transparent;
-            border: 1px solid #9CA3AF; /* gray-400 */
-            border-radius: 0.5rem; /* rounded-lg */
-            padding: 0.5rem 1rem; /* px-4 py-2 */
-            font-size: 0.75rem; /* text-xs */
-            color: #F9FAFB; /* text-white */
-            outline: none;
-            font-weight: 400; /* Normal font weight */
-            transition: all 0.2s ease-in-out;
-            text-transform: uppercase; /* text-transform: uppercase; */
-        }
-        .login-input-new::placeholder {
-            color: #F9FAFB; /* placeholder-white */
-        }
-        .login-input-new:focus {
-            outline: none;
-            ring: 1px;
-            ring-color: #9CA3AF; /* focus:ring-1 focus:ring-gray-400 */
-        }
-
-        .login-button-new { /* Renamed to avoid conflict */
-            background-color: #F3F4F6; /* gray-100 */
-            color: #1F2937; /* text-black (custom dark for button) */
-            font-size: 0.75rem; /* text-xs */
-            border-radius: 0.5rem; /* rounded-lg */
-            padding: 0.5rem 0.75rem; /* py-2 px-3 */
-            font-weight: 400; /* font-normal */
-            transition: all 0.2s ease-in-out;
-        }
-        .login-button-new:hover {
-            background-color: #E5E7EB; /* Lighter gray on hover */
-            transform: translateY(-1px);
-        }
-        /* Icon styling from Font Awesome (fas fa-eye-slash) */
-        .fa-eye-slash, .fa-eye {
-            color: #9CA3AF; /* gray-400 */
-            font-size: 0.875rem; /* text-sm */
-        }
     </style>
 </head>
 <body class="bg-gray-900 flex items-center justify-center min-h-screen">
 
-    <!-- Video Background -->
-    <video id="backgroundVideo" autoplay muted loop playsinline class="background-video" aria-label="Abstract colorful animated video background with smooth gradient tones">
-        <!-- Menggunakan URL video dari codingan yang diberikan pengguna -->
-        <source src="https://s8.ezgif.com/tmp/ezgif-84c9f442c94bc.mp4" type="video/mp4"/>
-        Your browser does not support the video tag.
-    </video>
+    <!-- GIF Background -->
+    <img id="backgroundGif" alt="Animated colorful abstract swirling background GIF with purple and blue tones" class="background-gif" src="https://i.pinimg.com/originals/4b/42/c9/4b42c98ef5fd1fc4304ee2cc7f0779c5.gif"/>
 
-    <!-- Layar Login -->
-    <div id="loginScreen" class="min-h-screen flex items-center justify-center fixed inset-0 z-10">
-        <div id="login-form-container" class="w-[320px] sm:w-[360px]">
-            <!-- Menggunakan URL gambar GIF dari codingan yang diberikan pengguna -->
-            <img alt="Animated colorful circular logo GIF with swirling blue and purple tones" class="mb-10 w-24 h-24 rounded-full" height="100" src="https://i.pinimg.com/originals/e5/d6/8b/e5d68b4c0923839b89fefb727afb9742.gif" width="100"/>
+    <!-- Layar Login (Updated with Glassmorphism styles) -->
+    <div id="loginScreen" class="min-h-screen flex items-center justify-center fixed inset-0 z-10 px-4">
+        <div id="login-form-container" class="glass-container w-[320px] sm:w-[360px] p-8 flex flex-col items-center">
+            <!-- Profile Logo (from new code) -->
+            <img alt="Profile photo logo with a woman with long hair and a blue background" class="logo-img" src="https://i.pinimg.com/736x/f9/df/6f/f9df6fdf0956b860072ba963fada01b0.jpg"/>
             
-            <form id="loginForm" class="w-full space-y-4"> <!-- Added id="loginForm" -->
-                <input class="login-input-new w-full" id="usernameInput" type="text" placeholder="USERNAME" value=""/>
+            <form id="loginForm" class="w-full space-y-4">
+                <!-- Username Input -->
+                <input class="glass-input w-full" id="usernameInput" type="text" placeholder="USERNAME" value=""/>
                 <div class="relative">
-                    <input class="login-input-new w-full pr-10" id="passwordInput" type="password" placeholder="PASSWORD" value=""/>
-                    <i id="togglePassword" class="fas fa-eye-slash absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer"></i>
+                    <!-- Password Input -->
+                    <input class="glass-input w-full pr-10" id="passwordInput" type="password" placeholder="PASSWORD" value=""/>
+                    <i id="togglePassword" class="fas fa-eye-slash eye-icon"></i>
                 </div>
+                <!-- Error Message -->
                 <p class="text-red-400 mb-4 text-xs text-center" id="loginErrorMessage"></p>
-                <div class="text-center text-[9px] text-white mb-4 select-none">
+                <div class="forgot-text">
                     LUPA KATA SANDI?
                 </div>
-                <button type="button" id="signInButton" class="login-button-new w-full"> <!-- Changed type to "button" -->
+                <button type="button" id="signInButton" class="glass-button">
                     MASUK
                 </button>
             </form>
-            <div class="text-[7px] text-gray-700 mt-6 select-none">
-                VERSION 6.2.0
+            <div class="version-text">
+                Design by riski bagus
             </div>
         </div>
     </div>
@@ -468,7 +491,7 @@
         const signInButton = document.getElementById('signInButton');
         const loginErrorMessage = document.getElementById('loginErrorMessage');
         const loginForm = document.getElementById('loginForm'); // Reference to the form element
-        const backgroundVideo = document.getElementById('backgroundVideo'); // Reference to the video element
+        const backgroundGif = document.getElementById('backgroundGif'); 
 
         // Main App Elements
         const mainAppContent = document.getElementById('mainAppContent');
@@ -880,7 +903,7 @@
             } catch (error) {
                 console.error("[Firebase] Error during Firebase initialization or authentication:", error);
                 userIdDisplay.textContent = 'Error Autentikasi';
-                showMessage(`Gagal terhubung ke Firebase: ${e.message}`, 'error');
+                showMessage(`Gagal terhubung ke Firebase: ${error.message}`, 'error');
             }
         }
 
@@ -895,7 +918,8 @@
                 loginErrorMessage.textContent = ""; // Clear any previous error
                 loginScreen.classList.add('hidden'); // Hide login screen
                 mainAppContent.classList.remove('hidden'); // Show main app content
-                backgroundVideo.classList.add('hide-video'); // Sembunyikan video background
+                backgroundGif.classList.add('hide-gif'); // Sembunyikan GIF background
+                document.body.style.overflowY = 'auto'; // Re-enable scrolling for the main app
 
                 // Now that the main app is visible, initialize its components
                 initializeFirebaseAndLoadData(); // Start Firebase init and data loading
@@ -969,6 +993,7 @@
             // Initially show login screen and hide main app
             loginScreen.classList.remove('hidden');
             mainAppContent.classList.add('hidden');
+            document.body.style.overflow = 'hidden'; // Prevent scrolling on login screen
             usernameInput.focus(); // Focus on username input on page load
             // Firebase and camera initialization for main app will happen ONLY after successful login
             // renderProductTable() is called by Firestore onSnapshot, so no need here.
