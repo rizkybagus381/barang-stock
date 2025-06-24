@@ -84,6 +84,27 @@
             box-shadow: 0 0 5px rgba(255 255 255 / 0.6);
             background: rgba(255 255 255 / 0.15);
         }
+
+        /* --- Autofill Styles Override --- */
+        /* For Webkit browsers (Chrome, Safari, iOS) */
+        input.glass-input:-webkit-autofill,
+        input.glass-input:-webkit-autofill:hover, 
+        input.glass-input:-webkit-autofill:focus, 
+        input.glass-input:-webkit-autofill:active {
+            -webkit-box-shadow: 0 0 0px 1000px rgba(255, 255, 255, 0.1) inset !important;
+            -webkit-text-fill-color: white !important;
+            background-color: rgba(255, 255, 255, 0.1) !important;
+            background-image: none !important;
+            transition: background-color 5000s ease-in-out 0s !important;
+        }
+
+        /* For Firefox */
+        input.glass-input:-moz-ui-valid { /* Target valid state with autofill */
+            background-color: rgba(255, 255, 255, 0.1) !important;
+            color: white !important;
+        }
+        /* End Autofill Styles Override */
+
         .eye-icon {
             color: rgba(255 255 255 / 0.7);
             cursor: pointer;
