@@ -454,15 +454,16 @@
         import { getFirestore, doc, setDoc, deleteDoc, collection, onSnapshot, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         // --- Firebase Configuration & Global Variables (MANDATORY USE) ---
-        // Fallback config (used only if __firebase_config is undefined at runtime)
-        const fallbackFirebaseConfig = {
-            apiKey: "DUMMY_API_KEY", // Placeholder for safety
-            authDomain: "dummy-domain.firebaseapp.com",
-            projectId: "dummy-project",
+        // Konfigurasi Firebase Anda yang asli, digunakan sebagai fallback jika konfigurasi lingkungan tidak tersedia.
+        const userFirebaseConfig = {
+            apiKey: "AIzaSyD-JgJAv0ZBPzEGW3cSmvVWTfY4Sy12B_g", // Kunci API Anda yang asli
+            authDomain: "hitungan-stok-barcode.firebaseapp.com",
+            projectId: "hitungan-stok-barcode",
         };
         // Use global variables for app_id and firebase_config if available
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const runtimeFirebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : fallbackFirebaseConfig;
+        // Menggunakan konfigurasi lingkungan, atau fallback ke userFirebaseConfig jika lingkungan gagal.
+        const runtimeFirebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : userFirebaseConfig;
         
         // Initialize Firebase
         const app = initializeApp(runtimeFirebaseConfig);
